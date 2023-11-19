@@ -106,6 +106,7 @@ def main(args):
                     do_sample=True if args.temperature > 0 else False,
                     temperature=args.temperature,
                     max_new_tokens=args.max_new_tokens,
+                    use_cache=True,
                     stopping_criteria=[stopping_criteria])
     
             outputs = tokenizer.decode(output_ids[0, input_ids.shape[1]:]).strip()
