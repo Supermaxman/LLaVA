@@ -23,7 +23,7 @@ from llava.model import *
 from llava.constants import DEFAULT_IMAGE_PATCH_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
 
 
-def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, load_4bit=False, device_map="auto", device="cuda"):
+def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, load_4bit=False, load_bf16=False, device_map="auto", device="cuda"):
     kwargs = {"device_map": device_map}
 
     if device != "cuda":
@@ -39,6 +39,8 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
             bnb_4bit_use_double_quant=True,
             bnb_4bit_quant_type='nf4'
         )
+    elif load_bf16:
+        kwargs['torch_dtype'] = torch.bfloat16
     else:
         kwargs['torch_dtype'] = torch.float16
 
