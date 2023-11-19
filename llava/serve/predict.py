@@ -62,8 +62,15 @@ def main(args):
         args.conv_mode = conv_mode
 
     data = list(read_jsonl(args.input_path))
-    with open(args.output_path, 'w') as f:
+    seen_ids = set()
+    if os.path.exists(args.output_path):
+        for p in read_jsonl(args.output_path):
+            seen_ids.add(p['id'])
+    
+    with open(args.output_path, 'a') as f:
         for ex in tqdm(data):
+            if ex['id'] in seen_ids:
+                continue
             conv = conv_templates[args.conv_mode].copy()
             if "mpt" in model_name.lower():
                 roles = ('user', 'assistant')
