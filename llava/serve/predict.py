@@ -1,5 +1,6 @@
 import argparse
 import torch
+import os
 
 from llava.constants import IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
 from llava.conversation import conv_templates, SeparatorStyle
@@ -70,7 +71,7 @@ def main(args):
             else:
                 roles = conv.roles
             image_path = ex['images'][0]
-            image = load_image(image_path)
+            image = load_image(os.path.join(args.images_path, image_path))
             # Similar operation in model_worker.py
             image_tensor = process_images([image], image_processor, model.config)
             if type(image_tensor) is list:
