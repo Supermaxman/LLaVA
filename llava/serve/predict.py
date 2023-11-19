@@ -45,7 +45,7 @@ def main(args):
     disable_torch_init()
 
     model_name = get_model_name_from_path(args.model_path)
-    tokenizer, model, image_processor, context_len = load_pretrained_model(args.model_path, args.model_base, model_name, args.load_8bit, args.load_4bit, device=args.device)
+    tokenizer, model, image_processor, context_len = load_pretrained_model(args.model_path, args.model_base, model_name, args.load_8bit, args.load_4bit, args.load_bf16, device=args.device)
 
     if 'llama-2' in model_name.lower():
         conv_mode = "llava_llama_2"
@@ -145,5 +145,6 @@ if __name__ == "__main__":
     parser.add_argument("--max-new-tokens", type=int, default=2048)
     parser.add_argument("--load-8bit", action="store_true")
     parser.add_argument("--load-4bit", action="store_true")
+    parser.add_argument("--load-bf16", action="store_true")
     args = parser.parse_args()
     main(args)
