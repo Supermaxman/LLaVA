@@ -126,9 +126,6 @@ def main(args):
             ) + "\n")
             f.flush()
             
-            if args.debug:
-                print("\n", {"prompt": prompt, "outputs": outputs}, "\n")
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -144,6 +141,5 @@ if __name__ == "__main__":
     parser.add_argument("--max-new-tokens", type=int, default=2048)
     parser.add_argument("--load-8bit", action="store_true")
     parser.add_argument("--load-4bit", action="store_true")
-    parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
     main(args)
