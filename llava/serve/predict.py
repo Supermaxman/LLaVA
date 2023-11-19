@@ -43,9 +43,11 @@ def load_image(image_file):
 def main(args):
     # Model
     disable_torch_init()
-
-    model_name = get_model_name_from_path(args.model_path)
-    tokenizer, model, image_processor, context_len = load_pretrained_model(args.model_path, args.model_base, model_name, args.load_8bit, args.load_4bit, args.load_bf16, device=args.device)
+    if args.model_name is None:
+        model_name = get_model_name_from_path(args.model_path)
+    else:
+        model_name = args.model_name
+    tokenizer, model, image_processor, context_len = load_pretrained_model(args.model_path, args.model_base, model_name, args.load_8bit, args.load_4bit, args.load_bf16, device=args.device, lora_path=args.lora_path)
 
     if 'llama-2' in model_name.lower():
         conv_mode = "llava_llama_2"
@@ -133,8 +135,10 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--model-name", type=str, default=None)
     parser.add_argument("--model-path", type=str, default="liuhaotian/llava-v1.5-7b")
     parser.add_argument("--model-base", type=str, default=None)
+    parser.add_argument("--lora-path", type=str, default=None)
     parser.add_argument("--input_path", type=str, required=True, help='input path for .jsonl file')
     parser.add_argument("--output_path", type=str, required=True, help='output path for .jsonl file')
     parser.add_argument("--images_path", type=str, required=True, help='input path for images')
