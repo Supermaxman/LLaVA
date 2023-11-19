@@ -16,7 +16,6 @@ from PIL import Image
 import requests
 from PIL import Image
 from io import BytesIO
-from transformers import TextStreamer
 
 def read_jsonl(path):
     with open(path, "r") as f:
@@ -99,7 +98,6 @@ def main(args):
             stop_str = conv.sep if conv.sep_style != SeparatorStyle.TWO else conv.sep2
             keywords = [stop_str]
             stopping_criteria = KeywordsStoppingCriteria(keywords, tokenizer, input_ids)
-            streamer = TextStreamer(tokenizer, skip_prompt=True, skip_special_tokens=True)
     
             with torch.inference_mode():
                 output_ids = model.generate(
@@ -108,8 +106,6 @@ def main(args):
                     do_sample=True if args.temperature > 0 else False,
                     temperature=args.temperature,
                     max_new_tokens=args.max_new_tokens,
-                    streamer=streamer,
-                    use_cache=True,
                     stopping_criteria=[stopping_criteria])
     
             outputs = tokenizer.decode(output_ids[0, input_ids.shape[1]:]).strip()
