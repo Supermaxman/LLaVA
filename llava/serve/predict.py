@@ -77,45 +77,49 @@ def main(args):
             else:
                 roles = conv.roles
             image_path = ex['images'][0]
-            image = load_image(os.path.join(args.images_path, image_path))
-            # Similar operation in model_worker.py
-            image_tensor = process_images([image], image_processor, model.config)
-            if type(image_tensor) is list:
-                image_tensor = [image.to(model.device, dtype=torch.float16) for image in image_tensor]
-            else:
-                image_tensor = image_tensor.to(model.device, dtype=torch.float16)
-        
-            inp = args.prompt
-    
-            if image is not None:
-                # first message
-                if model.config.mm_use_im_start_end:
-                    inp = DEFAULT_IM_START_TOKEN + DEFAULT_IMAGE_TOKEN + DEFAULT_IM_END_TOKEN + '\n' + inp
+            try:
+                image = load_image(os.path.join(args.images_path, image_path))
+                # Similar operation in model_worker.py
+                image_tensor = process_images([image], image_processor, model.config)
+                if type(image_tensor) is list:
+                    image_tensor = [image.to(model.device, dtype=torch.float16) for image in image_tensor]
                 else:
-                    inp = DEFAULT_IMAGE_TOKEN + '\n' + inp
-                conv.append_message(conv.roles[0], inp)
-                image = None
-            else:
-                # later messages
-                conv.append_message(conv.roles[0], inp)
-            conv.append_message(conv.roles[1], None)
-            prompt = conv.get_prompt()
-    
-            input_ids = tokenizer_image_token(prompt, tokenizer, IMAGE_TOKEN_INDEX, return_tensors='pt').unsqueeze(0).to(model.device)
-            stop_str = conv.sep if conv.sep_style != SeparatorStyle.TWO else conv.sep2
-            keywords = [stop_str]
-            stopping_criteria = KeywordsStoppingCriteria(keywords, tokenizer, input_ids)
-    
-            with torch.inference_mode():
-                output_ids = model.generate(
-                    input_ids,
-                    images=image_tensor,
-                    do_sample=True if args.temperature > 0 else False,
-                    temperature=args.temperature,
-                    max_new_tokens=args.max_new_tokens,
-                    use_cache=True,
-                    stopping_criteria=[stopping_criteria])
-    
+                    image_tensor = image_tensor.to(model.device, dtype=torch.float16)
+            
+                inp = args.prompt
+        
+                if image is not None:
+                    # first message
+                    if model.config.mm_use_im_start_end:
+                        inp = DEFAULT_IM_START_TOKEN + DEFAULT_IMAGE_TOKEN + DEFAULT_IM_END_TOKEN + '\n' + inp
+                    else:
+                        inp = DEFAULT_IMAGE_TOKEN + '\n' + inp
+                    conv.append_message(conv.roles[0], inp)
+                    image = None
+                else:
+                    # later messages
+                    conv.append_message(conv.roles[0], inp)
+                conv.append_message(conv.roles[1], None)
+                prompt = conv.get_prompt()
+        
+                input_ids = tokenizer_image_token(prompt, tokenizer, IMAGE_TOKEN_INDEX, return_tensors='pt').unsqueeze(0).to(model.device)
+                stop_str = conv.sep if conv.sep_style != SeparatorStyle.TWO else conv.sep2
+                keywords = [stop_str]
+                stopping_criteria = KeywordsStoppingCriteria(keywords, tokenizer, input_ids)
+        
+                with torch.inference_mode():
+                    output_ids = model.generate(
+                        input_ids,
+                        images=image_tensor,
+                        do_sample=True if args.temperature > 0 else False,
+                        temperature=args.temperature,
+                        max_new_tokens=args.max_new_tokens,
+                        use_cache=True,
+                        stopping_criteria=[stopping_criteria])
+            
+            except Exception as e:
+                print(e)
+                continue
             outputs = tokenizer.decode(output_ids[0, input_ids.shape[1]:]).strip()
             conv.messages[-1][-1] = outputs
             f.write(json.dumps(
