@@ -35,11 +35,11 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
         kwargs['load_in_4bit'] = True
         kwargs['quantization_config'] = BitsAndBytesConfig(
             load_in_4bit=True,
-            bnb_4bit_compute_dtype=torch.float16,
+            bnb_4bit_compute_dtype=torch.bfloat16 if load_bf16 else torch.float16,
             bnb_4bit_use_double_quant=True,
             bnb_4bit_quant_type='nf4'
         )
-    elif load_bf16:
+    if load_bf16:
         kwargs['torch_dtype'] = torch.bfloat16
     else:
         kwargs['torch_dtype'] = torch.float16
