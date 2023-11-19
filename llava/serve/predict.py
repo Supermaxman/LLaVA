@@ -111,13 +111,14 @@ def main(args):
         
                 with torch.inference_mode():
                     output_ids = model.generate(
-                        input_ids,
-                        images=image_tensor,
+                        inputs=input_ids,
                         do_sample=True if args.temperature > 0 else False,
                         temperature=args.temperature,
                         max_new_tokens=args.max_new_tokens,
                         use_cache=True,
-                        stopping_criteria=[stopping_criteria])
+                        stopping_criteria=[stopping_criteria],
+                        images=image_tensor,
+                    )
             
             except Exception as e:
                 print(e)
