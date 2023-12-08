@@ -38,12 +38,10 @@ def main(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--pred_path", type=str, required=True)
-    parser.add_argument("--frame_path", type=str, required=True)
     parser.add_argument("--output_path", type=str, required=True)
     args = parser.parse_args()
 
     main(
         args.pred_path,
-        args.frame_path,
         args.output_path,
     )
