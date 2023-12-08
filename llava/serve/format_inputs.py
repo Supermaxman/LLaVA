@@ -37,6 +37,7 @@ def main(
                     "id": f"{ex_id}-{f_id}",
                     "text": text,
                     "frame": f_text,
+                    "images": ex["images"],
                 }
             )
 
