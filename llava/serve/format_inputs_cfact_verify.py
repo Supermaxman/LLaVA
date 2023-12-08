@@ -1,3 +1,4 @@
+from collections import defaultdict
 import json
 import argparse
 
@@ -28,13 +29,13 @@ def main(
 
     cfacts = defaultdict(lambda: defaultdict(list))
     for cf in read_jsonl(cfact_path):
-        post_id = cf["post_id"]
-        f_id = cf["f_id"]
-        stance = cf["stance"]
-        content = cf["content"]
-        stance = Stance[stance.replace(" ", "_")]
+        post_id, f_id, stance = cf["id"].split("-")
+        content = cf["response"].replace("</s>", "").strip()
         cfacts[post_id][f_id].append(
-            StanceCounterFactual(stance=stance, rationale=content)
+            {
+                "stance": stance,
+                "content": content,
+            }
         )
     examples = []
     for ex in read_jsonl(data_path):
@@ -44,16 +45,23 @@ def main(
             f_text = frames[f_id]["text"]
             text = ex["text"]
             ex_id = ex["id"]
-            for stance in stance_values:
-                examples.append(
-                    {
-                        "id": f"{ex_id}-{f_id}-{stance}",
-                        "text": text,
-                        "frame": f_text,
-                        "images": ex["images"],
-                        "stance": stance,
-                    }
-                )
+
+            pf_cfacts = sorted(
+                cfacts[ex_id][f_id], key=lambda x: stance_values.index(x["stance"])
+            )
+            accept_rationale, reject_rationale, no_stance_rationale = pf_cfacts
+
+            examples.append(
+                {
+                    "id": f"{ex_id}-{f_id}",
+                    "text": text,
+                    "frame": f_text,
+                    "images": ex["images"],
+                    "accept_rationale": accept_rationale,
+                    "reject_rationale": reject_rationale,
+                    "no_stance_rationale": no_stance_rationale,
+                }
+            )
 
     write_jsonl(output_path, examples)
 
