@@ -110,91 +110,87 @@ def main(args):
         for p in read_jsonl(args.output_path):
             seen_ids.add(p["id"])
 
-    with open(args.output_path, "a") as f:
-        for ex in tqdm(data):
-            if ex["id"] in seen_ids:
-                continue
-            conv = conv_templates[args.conv_mode].copy()
-            image_path = ex["images"][0]
-            try:
-                image = load_image(os.path.join(args.images_path, image_path))
-                # Similar operation in model_worker.py
-                image_tensor = process_images([image], image_processor, model.config)
-                if type(image_tensor) is list:
-                    image_tensor = [
-                        image.to(
-                            model.device,
-                            dtype=torch.bfloat16 if args.load_bf16 else torch.float16,
-                        )
-                        for image in image_tensor
-                    ]
-                else:
-                    image_tensor = image_tensor.to(
+    for ex in tqdm(data):
+        if ex["id"] in seen_ids:
+            continue
+        conv = conv_templates[args.conv_mode].copy()
+        image_path = ex["images"][0]
+        try:
+            image = load_image(os.path.join(args.images_path, image_path))
+            # Similar operation in model_worker.py
+            image_tensor = process_images([image], image_processor, model.config)
+            if type(image_tensor) is list:
+                image_tensor = [
+                    image.to(
                         model.device,
                         dtype=torch.bfloat16 if args.load_bf16 else torch.float16,
                     )
-                user_prompt = config.user_prompt.format(
-                    post=ex["text"],
-                    frame=ex["frame"],
-                    accept_rationale=ex["accept_rationale"],
-                    reject_rationale=ex["reject_rationale"],
-                    no_stance_rationale=ex["no_stance_rationale"],
+                    for image in image_tensor
+                ]
+            else:
+                image_tensor = image_tensor.to(
+                    model.device,
+                    dtype=torch.bfloat16 if args.load_bf16 else torch.float16,
                 )
-                inp = f"{config.system_prompt}\n{user_prompt}"
+            user_prompt = config.user_prompt.format(
+                post=ex["text"],
+                frame=ex["frame"],
+                accept_rationale=ex["accept_rationale"],
+                reject_rationale=ex["reject_rationale"],
+                no_stance_rationale=ex["no_stance_rationale"],
+            )
+            inp = f"{config.system_prompt}\n{user_prompt}"
 
-                if image is not None:
-                    # first message
-                    if model.config.mm_use_im_start_end:
-                        inp = (
-                            DEFAULT_IM_START_TOKEN
-                            + DEFAULT_IMAGE_TOKEN
-                            + DEFAULT_IM_END_TOKEN
-                            + "\n"
-                            + inp
-                        )
-                    else:
-                        inp = DEFAULT_IMAGE_TOKEN + "\n" + inp
-                    conv.append_message(conv.roles[0], inp)
-                    image = None
+            if image is not None:
+                # first message
+                if model.config.mm_use_im_start_end:
+                    inp = (
+                        DEFAULT_IM_START_TOKEN
+                        + DEFAULT_IMAGE_TOKEN
+                        + DEFAULT_IM_END_TOKEN
+                        + "\n"
+                        + inp
+                    )
                 else:
-                    # later messages
-                    conv.append_message(conv.roles[0], inp)
-                conv.append_message(conv.roles[1], None)
-                prompt = conv.get_prompt()
+                    inp = DEFAULT_IMAGE_TOKEN + "\n" + inp
+                conv.append_message(conv.roles[0], inp)
+                image = None
+            else:
+                # later messages
+                conv.append_message(conv.roles[0], inp)
+            conv.append_message(conv.roles[1], None)
+            prompt = conv.get_prompt()
 
-                input_ids = (
-                    tokenizer_image_token(
-                        prompt, tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt"
-                    )
-                    .unsqueeze(0)
-                    .to(model.device)
+            input_ids = (
+                tokenizer_image_token(
+                    prompt, tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt"
                 )
-                stop_str = (
-                    conv.sep if conv.sep_style != SeparatorStyle.TWO else conv.sep2
-                )
-                keywords = [stop_str]
-                stopping_criteria = KeywordsStoppingCriteria(
-                    keywords, tokenizer, input_ids
+                .unsqueeze(0)
+                .to(model.device)
+            )
+            stop_str = conv.sep if conv.sep_style != SeparatorStyle.TWO else conv.sep2
+            keywords = [stop_str]
+            stopping_criteria = KeywordsStoppingCriteria(keywords, tokenizer, input_ids)
+
+            with torch.inference_mode():
+                output_ids = model.generate(
+                    inputs=input_ids,
+                    do_sample=True,
+                    temperature=config.temperature,
+                    top_p=config.top_p,
+                    max_new_tokens=config.max_tokens,
+                    use_cache=True,
+                    stopping_criteria=[stopping_criteria],
+                    images=image_tensor,
                 )
 
-                with torch.inference_mode():
-                    output_ids = model.generate(
-                        inputs=input_ids,
-                        do_sample=True,
-                        temperature=config.temperature,
-                        top_p=config.top_p,
-                        max_new_tokens=config.max_tokens,
-                        use_cache=True,
-                        stopping_criteria=[stopping_criteria],
-                        images=image_tensor,
-                    )
+        except Exception as e:
+            print(e)
+            continue
+        outputs = tokenizer.decode(output_ids[0, input_ids.shape[1] :]).strip()
 
-            except Exception as e:
-                print(e)
-                continue
-            outputs = tokenizer.decode(output_ids[0, input_ids.shape[1] :]).strip()
+        with open(args.output_path, "a") as f:
             f.write(json.dumps({"id": ex["id"], "response": outputs}) + "\n")
-            f.flush()
 
 
 if __name__ == "__main__":
